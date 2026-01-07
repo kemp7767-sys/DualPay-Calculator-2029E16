@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DualPay Calculator</title>
+    
+    <meta name="theme-color" content="#2563eb">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232563eb'/><text x='50%' y='50%' dominant-baseline='central' text-anchor='middle' fill='white' font-family='Arial' font-size='40' font-weight='bold'>€/лв</text></svg>">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@700&family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
+
+    <style>
+        :root { --main-blue: #2563eb; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f0f2f5;
+            overflow: hidden;
+            height: 100vh;
+        }
+        h1 { font-family: 'Comfortaa', cursive; }
+
+        /* Динамичен фон */
+        .bg-grid {
+            position: fixed;
+            top: 0; left: 0; width: 200%; height: 200%;
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 20px;
+            opacity: 0.08;
+            color: #374151;
+            z-index: -1;
+            animation: float 20s linear infinite;
+        }
+        @keyframes float {
+            0% { transform: translate(0, 0) rotate(0deg) scale(1); }
+            50% { transform: translate(-50px, -50px) rotate(5deg) scale(1.1); }
+            100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+        }
+
+        /* Glassmorphism */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Сегментиран бутон */
+        .segmented-control {
+            display: flex;
+            background: #e5e7eb;
+            padding: 2px;
+            border-radius: 10px;
+        }
+        .segmented-btn.active {
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            color: var(--main-blue);
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center p-4">
+
+    <div class="bg-grid" id="bgGrid"></div>
+
+    <main class="w-full max-w-md glass-card rounded-[2rem] p-6 md:p-8 relative">
+        <div class="flex flex-col items-center mb-6">
+            <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg mb-3">
+                <span class="text-white text-2xl font-black">€/лв</span>
+            </div>
+            <h1 class="text-2xl text-gray-800">DualPay</h1>
+        </div>
+
+        <div class="space-y-4">
+            <div class="p-4 bg-blue-50/50 rounded-2xl">
+                <label class="block text-xs font-semibold text-blue-600 uppercase mb-1">Сума за плащане</label>
+                <div class="flex gap-2">
+                    <input type="number" id="due" placeholder="0.00" class="bg-transparent text-2xl font-black w-full outline-none">
+                    <select id="dueCurr" class="bg-white px-3 py-1 rounded-lg text-sm font-bold shadow-sm">
+                        <option value="BGN">BGN</option>
+                        <option value="EUR">EUR</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div class="p-3 border border-gray-200 rounded-2xl">
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase">Платено в лв</label>
+                    <input type="number" id="paidBGN" value="0" class="w-full text-lg font-bold outline-none bg-transparent">
+                </div>
+                <div class="p-3 border border-gray-200 rounded-2xl">
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase">Платено в €</label>
+                    <input type="number" id="paidEUR" value="0" class="w-full text-lg font-bold outline-none bg-transparent">
+                </div>
+            </div>
+        </div>
+
+        <div id="error" class="hidden mt-4 p-3 bg-red-100 text-red-600 text-sm rounded-xl text-center font-bold italic">
+            Недостатъчна сума!
+        </div>
+
+        <div id="resultBox" class="mt-6 opacity-0 transition-opacity duration-500">
+            <div class="segmented-control mb-4">
+                <button onclick="setChangeCurr('EUR')" id="btnEUR" class="segmented-btn active w-1/2 py-2 text-xs font-bold transition-all">В ЕВРО</button>
+                <button onclick="setChangeCurr('BGN')" id="btnBGN" class="segmented-btn w-1/2 py-2 text-xs font-bold transition-all">В ЛЕВА</button>
+            </div>
+            
+            <div class="text-center">
+                <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Ресто за връщане</p>
+                <p id="mainChange" class="text-5xl font-black text-gray-800 my-1">0.00</p>
+                <p id="subChange" class="text-sm text-blue-500 font-medium italic">0.00</p>
+            </div>
+        </div>
+
+        <footer class="mt-8 text-center">
+            <div class="text-[10px] text-gray-400 font-medium">
+                Курс: 1 EUR = 1.95583 BGN
+            </div>
+            <div class="text-[10px] text-gray-500 mt-1 font-bold">
+                Твоето Име © 2024
+            </div>
+        </footer>
+    </main>
+
+    <script>
+        const RATE = 1.95583;
+        let changeMode = 'EUR';
+
+        // Генериране на фон
+        const grid = document.getElementById('bgGrid');
+        const symbols = ['€', 'лв', '⇄', '±'];
+        for(let i=0; i<60; i++) {
+            const span = document.createElement('span');
+            span.className = 'text-4xl flex justify-center items-center';
+            span.innerText = symbols[i % symbols.length];
+            grid.appendChild(span);
+        }
+
+        function setChangeCurr(mode) {
+            changeMode = mode;
+            document.getElementById('btnEUR').classList.toggle('active', mode === 'EUR');
+            document.getElementById('btnBGN').classList.toggle('active', mode === 'BGN');
+            calculate();
+        }
+
+        function calculate() {
+            const due = parseFloat(document.getElementById('due').value) || 0;
+            const dueCurr = document.getElementById('dueCurr').value;
+            const pBGN = parseFloat(document.getElementById('paidBGN').value) || 0;
+            const pEUR = parseFloat(document.getElementById('paidEUR').value) || 0;
+
+            const dueBGN = dueCurr === 'EUR' ? due * RATE : due;
+            const paidTotalBGN = pBGN + (pEUR * RATE);
+            const diffBGN = paidTotalBGN - dueBGN;
+
+            const resBox = document.getElementById('resultBox');
+            const errBox = document.getElementById('error');
+
+            if (due === 0) { resBox.style.opacity = "0"; return; }
+
+            if (diffBGN < -0.01) {
+                errBox.classList.remove('hidden');
+                resBox.style.opacity = "0";
+            } else {
+                errBox.classList.add('hidden');
+                resBox.style.opacity = "1";
+                
+                const changeEUR = diffBGN / RATE;
+                
+                if (changeMode === 'EUR') {
+                    document.getElementById('mainChange').innerText = changeEUR.toFixed(2) + " €";
+                    document.getElementById('subChange').innerText = "еквивалент: " + diffBGN.toFixed(2) + " лв";
+                } else {
+                    document.getElementById('mainChange').innerText = diffBGN.toFixed(2) + " лв";
+                    document.getElementById('subChange').innerText = "еквивалент: " + changeEUR.toFixed(2) + " €";
+                }
+            }
+        }
+
+        ['due', 'dueCurr', 'paidBGN', 'paidEUR'].forEach(id => {
+            document.getElementById(id).addEventListener('input', calculate);
+        });
+    </script>
+</body>
+</html>
